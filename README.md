@@ -4,7 +4,8 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GoDoc](https://godoc.org/github.com/tiger586/whois?status.svg)](https://godoc.org/github.com/tiger586/whois)
 
-一個功能完整、並發安全的 Go WHOIS 查詢套件，支援自動發現 WHOIS 伺服器、解析域名到期日，以及多種日期格式。
+- 一個功能完整、並發安全的 Go WHOIS 查詢套件，支援自動發現 WHOIS 伺服器、解析域名到期日，以及多種日期格式。  
+- 通用的關鍵字查詢函數，方便擴充查詢內容。
 
 ## ✨ 特色功能
 
@@ -20,7 +21,7 @@
 ## 📦 安裝
 
 ```bash
-go get github.com/tiger586/whois
+go get -u github.com/tiger586/whois
 ```
 
 ## 🚀 快速開始
@@ -132,7 +133,7 @@ func main() {
 
 #### `Lookup(domain string) (*LookupResult, error)`
 
-執行 WHOIS 查詢並返回完整結果。
+執行 WHOIS 查詢並返回完整結果
 
 ```go
 result, err := whois.Lookup("example.com")
@@ -148,7 +149,7 @@ fmt.Println(result.QueryTime)   // 342ms
 
 #### `GetWhoisServer(domain string) (string, error)`
 
-取得域名對應的 WHOIS 伺服器。
+取得域名對應的 WHOIS 伺服器
 
 ```go
 server, err := whois.GetWhoisServer("example.com")
@@ -157,7 +158,7 @@ server, err := whois.GetWhoisServer("example.com")
 
 #### `ValidateDomain(domain string) error`
 
-驗證域名格式是否有效。
+驗證域名格式是否有效
 
 ```go
 if err := whois.ValidateDomain("example.com"); err != nil {
@@ -167,7 +168,7 @@ if err := whois.ValidateDomain("example.com"); err != nil {
 
 #### `ParseExpiry(whoisText string) (expiry string, rawLine string)`
 
-從 WHOIS 回應中解析到期日。
+從 WHOIS 回應中解析到期日
 
 ```go
 expiry, raw := whois.ParseExpiry(result.RawResponse)
@@ -175,7 +176,7 @@ expiry, raw := whois.ParseExpiry(result.RawResponse)
 
 #### `ParseExpiryTime(expiryStr string) (*time.Time, error)`
 
-將到期日字串解析為 `time.Time`。
+將到期日字串解析為 `time.Time`
 
 **支援格式：**
 - `2006-01-02T15:04:05Z` (ISO8601)
@@ -191,7 +192,7 @@ expiry, raw := whois.ParseExpiry(result.RawResponse)
 
 #### `DaysUntilExpiry(expiry time.Time) int`
 
-計算距離到期還有幾天。
+計算距離到期還有幾天
 
 ```go
 days := whois.DaysUntilExpiry(result.Expiry)
@@ -200,7 +201,7 @@ fmt.Printf("還有 %d 天到期\n", days)
 
 #### `IsExpired(expiry time.Time) bool`
 
-檢查域名是否已過期。
+檢查域名是否已過期
 
 ```go
 if whois.IsExpired(result.Expiry) {
@@ -210,11 +211,132 @@ if whois.IsExpired(result.Expiry) {
 
 #### `IsExpiringSoon(expiry time.Time, days int) bool`
 
-檢查域名是否即將到期。
+檢查域名是否即將到期
 
 ```go
 if whois.IsExpiringSoon(result.Expiry, 30) {
     fmt.Println("域名將在 30 天內到期")
+}
+```
+
+### ✨ 三個通用的關鍵字查詢函數
+
+#### `ExtractField(whoisText, keyword string) string`
+
+擷取單一欄位
+
+```go
+result, _ := whois.Lookup("example.com")
+
+// 擷取 Registrar WHOIS Server
+registrarServer := whois.ExtractField(result.RawResponse, "Registrar WHOIS Server:")
+fmt.Println(registrarServer) // 輸出: whois.ionos.com
+
+// 擷取 Registrar
+registrar := whois.ExtractField(result.RawResponse, "Registrar:")
+fmt.Println(registrar) // 輸出: IONOS SE
+
+// 擷取 Creation Date
+created := whois.ExtractField(result.RawResponse, "Creation Date:")
+fmt.Println(created) // 輸出: 1995-08-14T04:00:00Z
+```
+
+#### `ExtractFields(whoisText string, keywords []string) map[string]string`
+
+批次擷取多個欄位
+
+```go
+result, _ := whois.Lookup("example.com")
+
+keywords := []string{
+    "Registrar:",
+    "Registrar WHOIS Server:",
+    "Creation Date:",
+    "Registry Expiry Date:",
+    "Updated Date:",
+}
+
+fields := whois.ExtractFields(result.RawResponse, keywords)
+
+for keyword, value := range fields {
+    fmt.Printf("%s %s\n", keyword, value)
+}
+
+// 輸出:
+// Registrar: IONOS SE
+// Registrar WHOIS Server: whois.ionos.com
+// Creation Date: 1995-08-14T04:00:00Z
+// Registry Expiry Date: 2025-08-13T04:00:00Z
+```
+
+#### `ExtractAllMatches(whoisText, keyword string) []string`
+
+擷取所有符合的值
+
+```go
+result, _ := whois.Lookup("example.com")
+
+// 擷取所有 Name Server
+nameServers := whois.ExtractAllMatches(result.RawResponse, "Name Server:")
+for _, ns := range nameServers {
+    fmt.Println(ns)
+}
+
+// 輸出:
+// A.IANA-SERVERS.NET
+// B.IANA-SERVERS.NET
+```
+
+#### 📝 「通用的關鍵字查詢」完整使用範例
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+    "github.com/tiger586/whois"
+)
+
+func main() {
+    result, err := whois.Lookup("example.com")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    if !result.Found {
+        fmt.Println("域名不存在")
+        return
+    }
+
+    // 方法 1: 單一欄位查詢
+    registrar := whois.ExtractField(result.RawResponse, "Registrar:")
+    fmt.Printf("註冊商: %s\n", registrar)
+
+    // 方法 2: 批次查詢
+    fields := whois.ExtractFields(result.RawResponse, []string{
+        "Registrar:",
+        "Registrar WHOIS Server:",
+        "Creation Date:",
+        "Updated Date:",
+    })
+
+    for key, value := range fields {
+        fmt.Printf("%s %s\n", key, value)
+    }
+
+    // 方法 3: 查詢多筆資料
+    nameServers := whois.ExtractAllMatches(result.RawResponse, "Name Server:")
+    fmt.Println("\nName Servers:")
+    for _, ns := range nameServers {
+        fmt.Printf("  - %s\n", ns)
+    }
+
+    // 原本的到期日功能仍然可用
+    if !result.Expiry.IsZero() {
+        fmt.Printf("\n到期日: %s\n", result.Expiry.Format("2006-01-02"))
+        fmt.Printf("剩餘天數: %d\n", whois.DaysUntilExpiry(result.Expiry))
+    }
 }
 ```
 
@@ -372,10 +494,6 @@ curl "http://localhost:8080/whois?domain=example.com"
 // 使用有寫入權限的目錄
 whois.SetCachePath("/tmp/whois_servers.json")
 ```
-
-### 查詢超時
-
-修改 `whois.go` 中的超時常數，或檢查網路連線。
 
 ### 無法解析到期日
 

@@ -14,6 +14,93 @@ import (
 )
 
 // =======================
+// Generic Field Extraction
+// =======================
+
+// ExtractField 從 WHOIS 回應中擷取指定關鍵字的值
+//
+// 例如: ExtractField(whoisText, "Registrar WHOIS Server:")
+//
+// 返回: "whois.ionos.com"
+func ExtractField(whoisText, keyword string) string {
+	if whoisText == "" || keyword == "" {
+		return ""
+	}
+
+	lines := strings.Split(whoisText, "\n")
+	keyword = strings.TrimSpace(keyword)
+	keywordLower := strings.ToLower(keyword)
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		lineLower := strings.ToLower(line)
+
+		// 檢查是否包含關鍵字
+		if strings.HasPrefix(lineLower, keywordLower) {
+			// 移除關鍵字部分，取得值
+			value := line[len(keyword):]
+			value = strings.TrimSpace(value)
+			return value
+		}
+	}
+
+	return ""
+}
+
+// ExtractFields 從 WHOIS 回應中擷取多個關鍵字的值
+//
+// 返回 map[keyword]value
+func ExtractFields(whoisText string, keywords []string) map[string]string {
+	result := make(map[string]string)
+
+	for _, keyword := range keywords {
+		value := ExtractField(whoisText, keyword)
+		if value != "" {
+			result[keyword] = value
+		}
+	}
+
+	return result
+}
+
+// ExtractAllMatches 擷取所有符合關鍵字的行（可能有多筆）
+//
+// 例如某些 WHOIS 回應中 Name Server 有多個
+func ExtractAllMatches(whoisText, keyword string) []string {
+	if whoisText == "" || keyword == "" {
+		return nil
+	}
+
+	var matches []string
+	lines := strings.Split(whoisText, "\n")
+	keyword = strings.TrimSpace(keyword)
+	keywordLower := strings.ToLower(keyword)
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		lineLower := strings.ToLower(line)
+
+		if strings.HasPrefix(lineLower, keywordLower) {
+			value := line[len(keyword):]
+			value = strings.TrimSpace(value)
+			if value != "" {
+				matches = append(matches, value)
+			}
+		}
+	}
+
+	return matches
+}
+
+// =======================
 // Domain Status Detection
 // =======================
 
