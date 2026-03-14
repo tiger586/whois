@@ -490,9 +490,9 @@ func ParseExpiry(whoisText string) (expiry string, rawLine string) {
 		return "", ""
 	}
 
-	lines := strings.Split(whoisText, "\n")
+	lines := strings.SplitSeq(whoisText, "\n")
 
-	for _, line := range lines {
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
